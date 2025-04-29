@@ -1,0 +1,116 @@
+const Home = () => {
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [calls, setCalls] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const navigate = useNavigate();
+
+  const uploadFile = async () => {
+    if (!file) {
+      alert("Please select a file first!");
+      return;
+    }
+
+    setLoading(true);
+    setUploadProgress(0);
+    setUploadStatus('uploading');
+
+    try {
+      const duration = await getAudioDuration(file);
+      const formattedDuration = formatDuration(duration);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await axios.post("http://localhost:5001/transcribe", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+          if (percentCompleted === 100) {
+            setUploadStatus('processing');
+          }
+        }
+      });
+
+      console.log("Backend Response:", response.data);
+
+      const newCall = {
+        id: file.name,
+        duration: formattedDuration,
+        score: response.data.metrics ? `${response.data.metrics.overallScore.score}%` : "N/A",
+        date: new Date().toLocaleString(),
+        status: "Completed",
+        transcriptionData: response.data.structured,
+        metrics: response.data.metrics
+      };
+      
+      console.log("New Call Object:", newCall);
+      
+      setCalls(prevCalls => [newCall, ...prevCalls]);
+      setFile(null);
+
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Error uploading file. Please try again.");
+      setUploadStatus('');
+    } finally {
+      setLoading(false);
+      setUploadProgress(0);
+      setUploadStatus('');
+    }
+  };
+
+  return (
+    <div>
+      {/* Replace the loading circle with new progress animation */}
+      {loading && (
+        <div className="upload-progress-container">
+          <div className="progress-circle-container">
+            <div className="progress-circle">
+              <svg className="progress-ring" width="120" height="120">
+                <circle
+                  className="progress-ring-circle-bg"
+                  stroke="#e2e8f0"
+                  strokeWidth="8"
+                  fill="transparent"
+                  r="52"
+                  cx="60"
+                  cy="60"
+                />
+                <circle
+                  className="progress-ring-circle"
+                  stroke="#3B82F6"
+                  strokeWidth="8"
+                  fill="transparent"
+                  r="52"
+                  cx="60"
+                  cy="60"
+                  style={{
+                    strokeDasharray: `${2 * Math.PI * 52}`,
+                    strokeDashoffset: `${2 * Math.PI * 52 * (1 - uploadProgress / 100)}`
+                  }}
+                />
+              </svg>
+              <div className="progress-text">
+                <span className="progress-percentage">{uploadProgress}%</span>
+                <span className="progress-status">{uploadStatus === 'uploading' ? 'Uploading' : 'Processing'}</span>
+              </div>
+            </div>
+          </div>
+          <div className="progress-steps">
+            <div className={`step ${uploadProgress > 0 ? 'active' : ''}`}>
+              <div className="step-icon">1</div>
+              <div className="step-label">Uploading File</div>
+            </div>
+            <div className={`step ${uploadStatus === 'processing' ? 'active' : ''}`}>
+              <div className="step-icon">2</div>
+              <div className="step-label">Processing Audio</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}; 
