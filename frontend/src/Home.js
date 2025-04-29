@@ -81,7 +81,7 @@ const Home = () => {
       formData.append("file", file);
 
       // Stage 1: Uploading (0-30%)
-      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5001";
+      const API_URL = process.env.REACT_APP_API_URL || "https://call-analyzer-agent.onrender.com";
       const response = await axios.post(`${API_URL}/transcribe`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         onUploadProgress: (progressEvent) => {
